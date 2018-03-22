@@ -168,13 +168,11 @@ if [ "$MAX_DYNAMIC_PARTITIONS_PER_NODE" == "" ]; then
   MAX_DYNAMIC_PARTITIONS_PER_NODE=100
 fi
 
-if [ "$SPARK_CONTAINER_DIR" != "" ]; then
-    
-    cp /opt/spark-2.1.0-bin-hadoop2.7/jars/datalake-client-libraries-1.5-SNAPSHOT.jar $HADOOP_HOME/share/hadoop/common/
-    cp /opt/spark-2.1.0-bin-hadoop2.7/jars/datalake-client-libraries-1.5-SNAPSHOT.jar $HADOOP_HOME/share/hadoop/common/lib/
-    cp /root/google-collections-1.0.jar /opt/spark-2.1.0-bin-hadoop2.7/jars/
-    cp $SPARK_CONTAINER_DIR/user.keytab $KEYTAB_PATH_URI
-fi 
+cp /opt/spark-2.1.0-bin-hadoop2.7/jars/datalake-client-libraries-1.5-SNAPSHOT.jar $HADOOP_HOME/share/hadoop/common/
+cp /opt/spark-2.1.0-bin-hadoop2.7/jars/datalake-client-libraries-1.5-SNAPSHOT.jar $HADOOP_HOME/share/hadoop/common/lib/
+cp /opt/spark-2.1.0-bin-hadoop2.7/jars/datalake-client-libraries-1.5-SNAPSHOT.jar $HADOOP_HOME/share/hadoop/common/hdfs/
+cp /root/google-collections-1.0.jar /opt/spark-2.1.0-bin-hadoop2.7/jars/
+cp /bigstep/kerberos/user.keytab $KEYTAB_PATH_URI
 
 if [ "$NOTEBOOK_DIR" != "" ]; then
 
@@ -310,40 +308,43 @@ if [ "$MAX_DYNAMIC_PARTITIONS_PER_NODE" != "" ]; then
 	mv /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml.tmp /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml
 fi
 
-if [ "$SPARK_POSTGRES_PASSWORD" != "" ]; then
-	sed "s/SPARK_POSTGRES_PASSWORD/$SPARK_POSTGRES_PASSWORD/" /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml >> /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml.tmp && \
-	mv /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml.tmp /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml
-	cp /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml /opt/hadoop/etc/hadoop/
-	
-	export PGPASSWORD=$POSTGRES_PASSWORD 
 
-	psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE USER $SPARK_POSTGRES_USER WITH PASSWORD '$SPARK_POSTGRES_PASSWORD';"
+export SPARK_POSTGRES_PASSWORD=$(cat $SPARK_SECRETS_PATH/SPARK_POSTGRES_PASSWORD)
 
-	psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE DATABASE $SPARK_POSTGRES_DB;"
+sed "s/SPARK_POSTGRES_PASSWORD/$SPARK_POSTGRES_PASSWORD/" /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml >> /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml.tmp && \
+mv /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml.tmp /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml
+cp /opt/spark-2.1.0-bin-hadoop2.7/conf/hive-site.xml /opt/hadoop/etc/hadoop/
 
-	psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "grant all PRIVILEGES on database $SPARK_POSTGRES_DB to $SPARK_POSTGRES_USER;" 
+export POSTGRES_PASSWORD=$(cat $SPARK_SECRETS_PATH/POSTGRES_PASSWORD)
+export PGPASSWORD=$POSTGRES_PASSWORD 
 
-	cd /opt/spark-2.1.0-bin-hadoop2.7/jars
+psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE USER $SPARK_POSTGRES_USER WITH PASSWORD '$SPARK_POSTGRES_PASSWORD';"
 
-	export PGPASSWORD=$SPARK_POSTGRES_PASSWORD
+psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE DATABASE $SPARK_POSTGRES_DB;"
 
-	psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U  $SPARK_POSTGRES_USER -d $SPARK_POSTGRES_DB -f /opt/spark-2.1.0-bin-hadoop2.7/jars/hive-schema-1.2.0.postgres.sql
+psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U $POSTGRES_USER -d $POSTGRES_DB -c "grant all PRIVILEGES on database $SPARK_POSTGRES_DB to $SPARK_POSTGRES_USER;" 
 
-	
-	hdfs dfs -mkdir /tmp
-	hdfs dfs -mkdir /tmp/hive 
+cd /opt/spark-2.1.0-bin-hadoop2.7/jars
 
-	#Check if there is no workaround this permissions
-	hdfs dfs -chmod -R 777 /tmp/hive
-fi
+export PGPASSWORD=$SPARK_POSTGRES_PASSWORD
+
+psql -h $POSTGRES_HOSTNAME -p $POSTGRES_PORT  -U  $SPARK_POSTGRES_USER -d $SPARK_POSTGRES_DB -f /opt/spark-2.1.0-bin-hadoop2.7/jars/hive-schema-1.2.0.postgres.sql
+
+hdfs dfs -mkdir /tmp
+hdfs dfs -mkdir /tmp/hive 
+
+#Check if there is no workaround this permissions
+hdfs dfs -chmod -R 777 /tmp/hive
 
 
-if [ "$NOTEBOOK_PASSWORD" != "" ]; then
-    pass=$(python /opt/password.py  $NOTEBOOK_PASSWORD)
-    sed "s/#c.NotebookApp.password = u.*/c.NotebookApp.password = u\'$pass\'/" /root/.jupyter/jupyter_notebook_config.py >> /root/.jupyter/jupyter_notebook_config.py.tmp && \
-	mv /root/.jupyter/jupyter_notebook_config.py.tmp /root/.jupyter/jupyter_notebook_config.py
-    rm -rf /opt/password.py 
-fi 
+
+
+export NOTEBOOK_PASSWORD=$(cat $SPARK_SECRETS_PATH/NOTEBOOK_PASSWORD)
+
+pass=$(python /opt/password.py  $NOTEBOOK_PASSWORD)
+sed "s/#c.NotebookApp.password = u.*/c.NotebookApp.password = u\'$pass\'/" /root/.jupyter/jupyter_notebook_config.py >> /root/.jupyter/jupyter_notebook_config.py.tmp && \
+mv /root/.jupyter/jupyter_notebook_config.py.tmp /root/.jupyter/jupyter_notebook_config.py
+
 
 if [ "$EX_MEM" != "" ]; then
 	sed "s/EX_MEM/$EX_MEM/" /opt/spark-2.1.0-bin-hadoop2.7/conf/spark-defaults.conf >> /opt/spark-2.1.0-bin-hadoop2.7/conf/spark-defaults.conf.tmp && \
