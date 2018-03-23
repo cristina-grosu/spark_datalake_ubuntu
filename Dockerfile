@@ -4,6 +4,7 @@ FROM ubuntu:16.04
 ADD bashrc ~/.bashrc
 ADD entrypoint.sh /
 ADD password.py /opt
+ADD version.json /opt
 
 ADD core-site.xml.datalake /opt/spark-2.3.0-bin-hadoop2.7/conf/
 ADD core-site.xml.datalake.integration /opt/spark-2.3.0-bin-hadoop2.7/conf/
@@ -183,23 +184,24 @@ ADD spark-daemon.sh $SPARK_HOME/sbin/spark-daemon.sh
 #Overwrite log4j properties file
 ADD log4j.properties $SPARK_HOME/conf/log4j.properties
 
-RUN cd /tmp && \
-    curl -sL "http://dl.bintray.com/sbt/native-packages/sbt/$SBT_VERSION/sbt-$SBT_VERSION.tgz" | gunzip | tar -x -C /usr/local && \
-    echo -ne "- with sbt $SBT_VERSION\n" >> /root/.built &&\
+#RUN cd /tmp && \
+#    curl -sL "http://dl.bintray.com/sbt/native-packages/sbt/$SBT_VERSION/sbt-$SBT_VERSION.tgz" | gunzip | tar -x -C /usr/local && \
+#    echo -ne "- with sbt $SBT_VERSION\n" >> /root/.built &&\
+RUN cd /tmp &&
     git clone https://github.com/apache/incubator-toree.git && \
     cd incubator-toree && \
-    make dist SHELL=/bin/bash APACHE_SPARK_VERSION=2.1.0 SCALA_VERSION=2.11 && \
+  #  make dist SHELL=/bin/bash APACHE_SPARK_VERSION=2.1.0 SCALA_VERSION=2.11 && \
     mv /tmp/incubator-toree/dist/toree /opt/toree-kernel && \
     chmod +x /opt/toree-kernel && \
     rm -rf /tmp/incubator-toree 
     
-RUN cp /opt/spark-2.1.0-bin-hadoop2.7/jars/commons-crypto-1.0.0.jar /opt/hadoop/share/hadoop/common/
-RUN cp /opt/spark-2.1.0-bin-hadoop2.7/jars/commons-crypto-1.0.0.jar /opt/hadoop/share/hadoop/common/lib/
+#RUN cp $SPARK_HOME/jars/commons-crypto-1.0.0.jar /opt/hadoop/share/hadoop/common/
+#RUN cp $SPARK_HOME/jars/commons-crypto-1.0.0.jar /opt/hadoop/share/hadoop/common/lib/
     
  # Get the right Toree Assembly Jar
-RUN wget http://repo.bigstepcloud.com/bigstep/datalab/toree-assembly-0.2.0.dev1-incubating-SNAPSHOT.jar -O /opt/toree-kernel/lib/toree-assembly-0.2.0.dev1-incubating-SNAPSHOT.jar
+#RUN wget http://repo.bigstepcloud.com/bigstep/datalab/toree-assembly-0.2.0.dev1-incubating-SNAPSHOT.jar -O /opt/toree-kernel/lib/toree-assembly-0.2.0.dev1-incubating-SNAPSHOT.jar
+RUN wget http://repo.bigstepcloud.com/bigstep/datalab/toree-assembly-0.3.0.dev1-incubating-SNAPSHOT.jar -O /opt/toree-kernel/lib/toree-assembly-0.3.0.dev1-incubating-SNAPSHOT.jar
 
-ADD version.json /opt
 #        SparkMaster  SparkMasterWebUI  SparkWorkerWebUI REST     Jupyter Spark		Thrift
 EXPOSE    7077        8080              8081              6066    8888      4040     88   10000
 
