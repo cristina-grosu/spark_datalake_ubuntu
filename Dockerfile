@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 #Add additional configuration files
-ADD bashrc ~/.bashrc
+#ADD bashrc ~/.bashrc
 ADD entrypoint.sh /
 ADD password.py /opt
 ADD version.json /opt
@@ -187,7 +187,7 @@ ADD log4j.properties $SPARK_HOME/conf/log4j.properties
 #RUN cd /tmp && \
 #    curl -sL "http://dl.bintray.com/sbt/native-packages/sbt/$SBT_VERSION/sbt-$SBT_VERSION.tgz" | gunzip | tar -x -C /usr/local && \
 #    echo -ne "- with sbt $SBT_VERSION\n" >> /root/.built &&\
-RUN cd /tmp &&
+RUN cd /tmp && \
     git clone https://github.com/apache/incubator-toree.git && \
     cd incubator-toree && \
   #  make dist SHELL=/bin/bash APACHE_SPARK_VERSION=2.1.0 SCALA_VERSION=2.11 && \
